@@ -1,0 +1,2 @@
+timestamp,min_latency_ms,avg_latency_ms,max_latency_ms,jitter_ms
+2026-09-0900:40:27,62.6,64.05,66.8,1.887679351302367

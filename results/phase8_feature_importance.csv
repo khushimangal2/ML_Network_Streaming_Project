@@ -1,0 +1,12 @@
+feature,importance
+avg_latency_ms,0.27026897410530343
+min_latency_ms,0.25437832136555993
+max_latency_ms,0.14562342297143677
+measured_jitter_ms,0.11976195549251688
+measured_packet_loss_percent,0.06556110651620523
+jitter_latency_ratio,0.04841501164080752
+latency_ratio,0.026689546831000027
+latency_range_ms,0.02634924720596722
+latency_variability_ms,0.020516849659241325
+loss_difference_percent,0.012644479672842794
+loss_ratio,0.009791084539118934

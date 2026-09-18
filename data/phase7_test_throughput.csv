@@ -1,0 +1,2 @@
+experiment_id,repetition,condition,configured_bandwidth_mbps,configured_delay_ms,configured_jitter_ms,configured_packet_loss_percent,measured_throughput_mbps,download_time_seconds,measured_packet_loss_percent,min_latency_ms,avg_latency_ms,max_latency_ms,measured_jitter_ms
+1,1,Moderate,5,100,10,2,0.5404454336630761,155.216558,3.0,124.042,180.079,585.108,49.5625
