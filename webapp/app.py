@@ -3,6 +3,7 @@ import os
 import subprocess
 import joblib
 import pandas as pd
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -37,7 +38,12 @@ def get_latency(host="8.8.8.8", count=5):
         for line in result.stdout.splitlines():
 
             if "time=" in line:
+
                 latency = line.split("time=")[1].split()[0]
+
+                # Remove possible units
+                latency = latency.replace("ms", "")
+
                 latency_values.append(float(latency))
 
         if len(latency_values) == 0:
@@ -66,10 +72,15 @@ def collect_network_metrics():
 
     max_latency = max(latency_values)
 
-    jitter = sum(
-        abs(latency_values[i] - latency_values[i - 1])
-        for i in range(1, len(latency_values))
-    ) / (len(latency_values) - 1)
+    if len(latency_values) > 1:
+
+        jitter = sum(
+            abs(latency_values[i] - latency_values[i - 1])
+            for i in range(1, len(latency_values))
+        ) / (len(latency_values) - 1)
+
+    else:
+        jitter = 0.0
 
     result = subprocess.run(
         ["ping", "-c", "10", "8.8.8.8"],
@@ -82,9 +93,13 @@ def collect_network_metrics():
     for line in result.stdout.splitlines():
 
         if "packet loss" in line:
-            packet_loss = float(
-                line.split("%")[0].split()[-1]
-            )
+
+            try:
+                packet_loss = float(
+                    line.split("%")[0].split()[-1]
+                )
+            except (ValueError, IndexError):
+                packet_loss = 0.0
 
     return {
         "packet_loss_percent": packet_loss,
@@ -108,7 +123,8 @@ def predict_network():
         return {
             "prediction": "Unknown",
             "quality": "medium",
-            "metrics": {}
+            "metrics": {},
+            "timestamp": datetime.now().strftime("%H:%M:%S")
         }
 
     input_data = pd.DataFrame(
@@ -122,23 +138,39 @@ def predict_network():
         ]
     )
 
-    prediction = model.predict(input_data)[0]
+    try:
+
+        prediction = model.predict(input_data)[0]
+
+    except Exception as error:
+
+        return {
+            "prediction": "Prediction Error",
+            "quality": "medium",
+            "metrics": metrics,
+            "error": str(error),
+            "timestamp": datetime.now().strftime("%H:%M:%S")
+        }
 
     prediction_text = str(prediction).lower()
 
     if prediction_text == "good":
+
         quality = "high"
 
     elif prediction_text == "moderate":
+
         quality = "medium"
 
     else:
+
         quality = "low"
 
     return {
-        "prediction": prediction,
+        "prediction": str(prediction),
         "quality": quality,
-        "metrics": metrics
+        "metrics": metrics,
+        "timestamp": datetime.now().strftime("%H:%M:%S")
     }
 
 
@@ -159,147 +191,365 @@ HTML_PAGE = """
 <style>
 
 body {
+
     font-family: Arial, sans-serif;
+
     text-align: center;
+
     background-color: #f4f4f4;
+
     margin: 40px;
+
 }
 
 .container {
+
     background: white;
+
     padding: 25px;
+
     border-radius: 10px;
+
     max-width: 900px;
+
     margin: auto;
+
 }
 
 video {
+
     width: 55%;
+
     max-height: 600px;
+
     margin-top: 20px;
+
 }
 
 #status {
+
     font-size: 22px;
+
     font-weight: bold;
+
     margin: 20px;
+
 }
 
 .metrics {
+
     margin-top: 20px;
+
     text-align: left;
+
     display: inline-block;
+
     background: #eeeeee;
+
     padding: 15px;
+
     border-radius: 8px;
+
+    min-width: 300px;
+
+}
+
+#refreshButton {
+
+    padding: 10px 20px;
+
+    font-size: 16px;
+
+    cursor: pointer;
+
+    border: none;
+
+    border-radius: 6px;
+
+    background-color: #333;
+
+    color: white;
+
+    margin-top: 10px;
+
+}
+
+#refreshButton:disabled {
+
+    opacity: 0.6;
+
+    cursor: not-allowed;
+
+}
+
+#lastUpdate {
+
+    margin-top: 10px;
+
+    color: #555;
+
+    font-size: 14px;
+
 }
 
 </style>
 
 </head>
 
+
 <body>
+
 
 <div class="container">
 
+
 <h1>ML-Based Adaptive Video Streaming System</h1>
 
+
 <p>
+
 Network conditions are monitored automatically and
+
 video quality changes based on ML prediction.
+
 </p>
 
+
 <div id="status">
+
 Starting automatic network monitoring...
+
 </div>
+
+
+<button id="refreshButton" onclick="manualRefresh()">
+
+Refresh Network Prediction
+
+</button>
+
+
+<div id="lastUpdate">
+
+Last update: Not available
+
+</div>
+
 
 <div id="metrics" class="metrics">
+
 Collecting network metrics...
+
 </div>
 
+
 <video id="videoPlayer" controls>
+
 Your browser does not support the video tag.
+
 </video>
+
 
 </div>
 
 
 <script>
 
+
 let currentQuality = "";
+
 let monitoring = false;
 
+let monitoringInterval = null;
 
-function analyzeNetwork() {
+
+
+// ---------------------------------
+// Analyze network
+// ---------------------------------
+
+function analyzeNetwork(showLoading = false) {
+
+
+    const button =
+
+        document.getElementById("refreshButton");
+
+
+    if (showLoading) {
+
+        button.disabled = true;
+
+        button.innerText = "Checking Network...";
+
+    }
+
 
     fetch("/predict")
 
-    .then(response => response.json())
+
+    .then(response => {
+
+        if (!response.ok) {
+
+            throw new Error("Server returned an error.");
+
+        }
+
+        return response.json();
+
+    })
+
 
     .then(data => {
 
+
         document.getElementById("status").innerText =
+
             "Predicted Network: "
+
             + data.prediction
+
             + " → Selected Video: "
+
             + data.quality.toUpperCase()
+
             + " QUALITY";
 
 
         let metricText =
+
             "<b>Live Network Metrics</b><br><br>";
+
+
+        if (Object.keys(data.metrics).length === 0) {
+
+            metricText +=
+
+                "Network metrics unavailable.";
+
+        }
 
 
         for (const key in data.metrics) {
 
+
             metricText +=
+
                 key
+
                 + ": "
+
                 + Number(data.metrics[key]).toFixed(3)
+
                 + "<br>";
 
         }
 
 
         document.getElementById("metrics").innerHTML =
+
             metricText;
+
+
+        document.getElementById("lastUpdate").innerText =
+
+            "Last update: "
+
+            + data.timestamp;
 
 
         if (data.quality !== currentQuality) {
 
+
             switchVideo(data.quality);
+
 
             currentQuality = data.quality;
 
         }
 
+
     })
+
 
     .catch(error => {
 
+
         document.getElementById("status").innerText =
+
             "Error collecting network data.";
+
+
+        document.getElementById("metrics").innerHTML =
+
+            "<b>Error:</b> "
+
+            + error.message;
+
+
+    })
+
+
+    .finally(() => {
+
+
+        if (showLoading) {
+
+            button.disabled = false;
+
+            button.innerText =
+
+                "Refresh Network Prediction";
+
+        }
 
     });
 
 }
 
 
+
+// ---------------------------------
+// Manual refresh
+// ---------------------------------
+
+function manualRefresh() {
+
+    analyzeNetwork(true);
+
+}
+
+
+
+// ---------------------------------
+// Switch video quality
+// ---------------------------------
+
 function switchVideo(quality) {
 
+
     const video =
+
         document.getElementById("videoPlayer");
 
+
     const currentTime =
+
         video.currentTime;
 
+
     const wasPlaying =
+
         !video.paused;
 
 
     video.src =
+
         "/video/"
+
         + quality
+
         + ".mp4";
 
 
@@ -308,12 +558,36 @@ function switchVideo(quality) {
 
     video.onloadedmetadata = function() {
 
-        video.currentTime =
-            currentTime;
+
+        try {
+
+            video.currentTime = currentTime;
+
+        }
+
+        catch (error) {
+
+            console.log(
+
+                "Could not restore video position."
+
+            );
+
+        }
 
 
         if (wasPlaying) {
-            video.play();
+
+            video.play().catch(
+
+                error => console.log(
+
+                    "Video autoplay was blocked."
+
+                )
+
+            );
+
         }
 
     };
@@ -321,11 +595,20 @@ function switchVideo(quality) {
 }
 
 
+
+// ---------------------------------
+// Automatic monitoring
+// ---------------------------------
+
 function startMonitoring() {
 
+
     if (monitoring) {
+
         return;
+
     }
+
 
     monitoring = true;
 
@@ -333,19 +616,22 @@ function startMonitoring() {
     analyzeNetwork();
 
 
-    setInterval(
+    monitoringInterval = setInterval(
+
         analyzeNetwork,
+
         15000
+
     );
 
 }
 
 
-window.onload =
-    startMonitoring;
+window.onload = startMonitoring;
 
 
 </script>
+
 
 </body>
 
@@ -360,19 +646,25 @@ window.onload =
 
 @app.route("/")
 def home():
+
     return render_template_string(HTML_PAGE)
 
 
 @app.route("/predict")
 def predict():
+
     return jsonify(predict_network())
 
 
 @app.route("/video/<filename>")
 def video(filename):
+
     return send_from_directory(
+
         VIDEO_DIR,
+
         filename
+
     )
 
 
@@ -381,4 +673,13 @@ def video(filename):
 # ---------------------------------
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+
+    app.run(
+
+        host="0.0.0.0",
+
+        port=5000,
+
+        debug=False
+
+    )
