@@ -1,0 +1,5 @@
+model,mae_ms,rmse_ms,r2
+Persistence Baseline,9.26,13.495,-0.214
+Linear Regression,8.381,10.716,0.234
+Random Forest,10.346,13.71,-0.253
+Gradient Boosting,9.26,12.764,-0.086
