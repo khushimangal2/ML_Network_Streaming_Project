@@ -1,0 +1,17 @@
+horizon,model,mae_ms,rmse_ms,r2
+1,Persistence Baseline,9.465,13.522,-0.099
+1,Linear Regression,8.339,10.897,0.286
+1,Random Forest,9.746,13.721,-0.132
+1,Gradient Boosting,9.193,12.802,0.015
+2,Persistence Baseline,10.694,13.341,-0.064
+2,Linear Regression,9.283,11.374,0.227
+2,Random Forest,9.387,12.033,0.135
+2,Gradient Boosting,9.773,12.545,0.059
+3,Persistence Baseline,11.85,14.735,-0.328
+3,Linear Regression,9.747,12.535,0.039
+3,Random Forest,12.172,17.356,-0.842
+3,Gradient Boosting,10.883,14.97,-0.37
+4,Persistence Baseline,12.506,16.175,-0.744
+4,Linear Regression,9.499,13.007,-0.128
+4,Random Forest,9.444,14.015,-0.31
+4,Gradient Boosting,9.479,13.18,-0.158
