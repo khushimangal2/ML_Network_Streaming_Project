@@ -1,0 +1,4 @@
+test_condition,avg_latency_ms,packet_loss_percent,model_prediction,recommended_quality
+Normal,60.02,0.0,high,high
+Simulated 200ms delay,268.2,0.0,low,low
+After delay removed,57.86,0.0,high,high
